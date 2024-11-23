@@ -12,7 +12,7 @@ import falcon
 from keri import help
 from hio.base import doing
 from keri import kering
-from keri.core import Siger
+from keri.core import coring
 
 from verifier.core.basing import delete_upload_status, ReportStats, ReportStatus, save_upload_status, UploadStatus
 from verifier.core.utils import DigerBuilder
@@ -444,7 +444,7 @@ class ReportVerifier(doing.Doer):
                                 signed.append(os.path.basename(fullPath))
 
                                 kever = self.hby.kevers[sigAid]
-                                sigers = [Siger(qb64=sig) for sig in signature[SIGS]]
+                                sigers = [coring.Siger(qb64=sig) for sig in signature[SIGS]]
                                 if len(sigers) == 0:
                                     raise kering.ValidationError(f"missing signatures on {file_name}")
 

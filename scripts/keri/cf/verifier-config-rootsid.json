@@ -14,5 +14,6 @@
     "http://schemas.rootsid.cloud/oobi/EH6ekLjSr8V32WyFbGe1zXjTzFs9PkTYmupJ9H65O14g",
     "http://schemas.rootsid.cloud/oobi/EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao"
   ],
-  "LEIs": []
+  "LEIs": [],
+  "ECR_Roles": ["EBA Data Submitter"]
 }

@@ -1,23 +1,24 @@
-from ..common import *
+# from ..common import *
 
 import falcon
 import falcon.testing
-
+import os
 from keri.app import habbing
 from keri.core import coring
 from keri.vdr import viring
-
 import pytest
-
 from verifier.core import basing, verifying
 from verifier.core.authorizing import Authorizer, Schema
+from tests.common import *
 
 def test_ecr(seeder):
 
-    with habbing.openHab(name="sid", temp=True, salt=b"0123456789abcdef") as (hby, hab):
-        vdb = basing.VerifierBaser(name=hby.name, temp=True)
+    # Add roles to test
+    valid_roles = ["EBA Data Submitter", "EBA Data Admin"]
 
-        #   habbing.openHab(name="wan", temp=True, salt=b'0123456789abcdef', transferable=False) as (wanHby, wanHab)):
+    with habbing.openHab(name="sid", temp=True, salt=b"0123456789abcdef") as (hby, hab):
+        vdb = coring.VerifierBaser(name=hby.name, temp=True)
+
         seeder.seedSchema(db=hby.db)
         regery, registry, verifier, seqner = reg_and_verf(
             hby, hab, registryName="qvireg"
@@ -63,18 +64,22 @@ def test_ecr(seeder):
             hby, hab, regery, registry, verifier, Schema.ECR_AUTH_SCHEMA2, ecr_auth_cred, seqner
         )
 
-        # try submitting the ECR auth cred
-        issAndCred = bytearray()
-        issAndCred.extend(eamsgs)
-        acdc = issAndCred.decode("utf-8")
+        # Test invalid role (ECR_AUTH schema cred, should fail)
+        ecr_auth_cred.attrib["engagementContextRole"] = "Invalid Role"
         hby.kevers[hab.pre] = hab.kever
-        auth = Authorizer(hby, vdb, eacrdntler.rgy.reger, [LEI1])
+        auth = Authorizer(hby, vdb, eacrdntler.rgy.reger, valid_roles)
         chain_success, chain_msg = auth.chain_filters(ecr_auth_cred)
         assert chain_success
         assert chain_msg == f"QVI->LE->ECR_AUTH"
         success, msg = auth.cred_filters(ecr_auth_cred)
         assert not success
         assert msg == f"Can't authorize cred with ECR_AUTH schema"
+
+        # Test valid role (ECR_AUTH schema cred, should pass)
+        ecr_auth_cred.attrib["engagementContextRole"] = "EBA Data Admin"
+        success, msg = auth.cred_filters(ecr_auth_cred)
+        assert success
+        assert msg == f"Credential passed filters for user {hab.pre} with LEI {LEI1}"
 
         # chained ecr auth cred
         ecredge = get_ecr_edge(easaid, Schema.ECR_AUTH_SCHEMA2)
@@ -94,7 +99,7 @@ def test_ecr(seeder):
         issAndCred = bytearray()
         issAndCred.extend(ecmsgs)
         hby.kevers[hab.pre] = hab.kever
-        auth = Authorizer(hby, vdb, eccrdntler.rgy.reger, [LEI1])
+        auth = Authorizer(hby, vdb, eccrdntler.rgy.reger, valid_roles)
         chain_success, chain_msg = auth.chain_filters(ecr_cred)
         assert chain_success
         assert chain_msg == f"QVI->LE->ECR_AUTH->ECR"
@@ -110,3 +115,7 @@ def test_ecr(seeder):
             == "0BB1Z2DS3QvIBdZJ1Q7yuZCUG-6YkVXDm7dcGbIFEIsLYEBfFXk8P_Y9FUACTlv5vCHeCet70QzVdR8fu5tLBKkP"
         )
         assert hby.kevers[hab.pre].verfers[0].verify(sig=cig.raw, ser=raw)
+
+
+
+        

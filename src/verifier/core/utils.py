@@ -1,5 +1,5 @@
 from keri import kering
-from keri.core import MtrDex, coring
+from keri.core import coring
 from keri.vdr.eventing import state
 
 from verifier.core.basing import AUTH_REVOKED, CredProcessState
@@ -11,7 +11,7 @@ class DigerBuilder:
         try:
             non_pref_dig = DigerBuilder.get_non_prefixed_digest(dig)  # Temporarily remove prefix
             non_pref_dig = bytes.fromhex(non_pref_dig)
-            diger = DigerBuilder.build_diger(non_pref_dig, MtrDex.SHA2_256)
+            diger = DigerBuilder.build_diger(non_pref_dig, coring.MtrDex.SHA2_256)
             return diger
         except Exception as e:
             raise e

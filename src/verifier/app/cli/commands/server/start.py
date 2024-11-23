@@ -74,6 +74,9 @@ def launch(args):
                             reopen=True,
                             clear=False)
     
+    data = dict(cf.get())  # Assuming this fetches the entire configuration as a dictionary
+    roles = data.get("roles", []) 
+    
     help.ogler.level = logging.DEBUG
 
     if aeid is None:
@@ -98,7 +101,9 @@ def launch(args):
 
     verifying.setup(app, hby=hby, vdb=vdb, reger=reger)
     reportDoers = reporting.setup(app=app, hby=hby, vdb=vdb)
-    authDoers = authorizing.setup(hby, vdb=vdb, reger=reger, cf=cf)
+    # authDoers = authorizing.setup(hby, vdb=vdb, reger=reger, cf=cf)
+    authDoers = authorizing.setup(hby, vdb=vdb, reger=reger, cf=cf, roles=roles)
+
 
     doers = obl.doers + authDoers + reportDoers + [hbyDoer, httpServerDoer]
 
