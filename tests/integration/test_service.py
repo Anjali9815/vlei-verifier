@@ -39,7 +39,7 @@ def test_service_ecr(seeder):
         #chained ecr auth cred
         ecredge = get_ecr_edge(easaid,Schema.ECR_AUTH_SCHEMA2)
         
-        ecr = get_ecr_cred(issuer=hab.pre, recipient=hab.pre, schema=Schema.ECR_SCHEMA, registry=registry, sedge=ecredge, lei=LEI1)
+        ecr = get_ecr_cred(issuer=hab.pre, recipient=hab.pre, schema=Schema.ECR_SCHEMA, registry=registry, sedge=ecredge, lei=LEI1, role = DEFAULT_ECR_ROLES)
         hab, eccrdntler, ecsaid, eckmsgs, ectmsgs, ecimsgs, ecmsgs = get_cred(hby, hab, regery, registry, verifier, Schema.ECR_SCHEMA, ecr, seqner)
         
         app = falcon.App(

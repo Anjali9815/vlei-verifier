@@ -16,8 +16,8 @@ from keri.help import helping
 from verifier.core.basing import Account, CredProcessState, AUTH_REVOKED
 from verifier.core.verifying import CRED_CRYPT_VALID
 
-# Hard-coded vLEI Engagement context role to accept.  This would be configurable in production
-EBA_DOCUMENT_SUBMITTER_ROLE = "EBA Data Submitter"
+# Modify this section to support configurable roles
+DEFAULT_ECR_ROLES = ["EBA Data Submitter"]  # Default role
 
 AUTH_PENDING = "Credential pending authorization"
 AUTH_SUCCESS = "Credential authorized"
@@ -52,6 +52,12 @@ class Schema:
     schema_names[QVI_SCHEMA2] = "QVI"
 
 
+def set_ecr_role(self, role):
+    if role in self.ecr_roles:
+        self.ecr_role = role
+    else:
+        raise ValueError(f"Invalid role: {role}")
+
 def setup(hby, vdb, reger, cf):
     """
 
@@ -70,6 +76,13 @@ def setup(hby, vdb, reger, cf):
         raise kering.ConfigurationError(
             "invalid configuration, no LEIs available to accept"
         )
+    
+    # Add this right after reading the configuration data:
+    if "ECR_Roles" not in data:
+        raise kering.ConfigurationError("ECR_Roles configuration missing")
+
+    ecr_roles = data["ECR_Roles"]  # Load roles from the configuration file
+    DEFAULT_ECR_ROLES = ecr_roles if ecr_roles else DEFAULT_ECR_ROLES
 
     leis = data.get("LEIs")
     if not None and not isinstance(leis, list):
@@ -77,7 +90,7 @@ def setup(hby, vdb, reger, cf):
             "invalid configuration, invalid LEIs in configuration"
         )
 
-    authorizer = Authorizer(hby, vdb, reger, leis)
+    authorizer = Authorizer(hby, vdb, reger, leis, roles=DEFAULT_ECR_ROLES)
 
     # These lines representing AID keystate and credential revocation state monitoring.
     # witq = agenting.WitnessInquisitor(hby=hby)
@@ -96,7 +109,7 @@ class Authorizer:
 
     TimeoutAuth = 600
 
-    def __init__(self, hby, vdb, reger, leis):
+    def __init__(self, hby, vdb, reger, leis, roles=None):
         """
         Create a Authenticator capable of persistent processing of messages and performing
         web hook calls.
@@ -112,7 +125,8 @@ class Authorizer:
         self.vdb = vdb
         self.reger = reger
         self.leis = leis
-
+        self.ecr_roles = roles if roles else ["EBA Data Submitter"]
+        self.ecr_role = self.ecr_roles[0]  
         self.clients = dict()
 
     def processPresentations(self):
@@ -189,8 +203,10 @@ class Authorizer:
             elif len(self.leis) > 0 and creder.attrib["LEI"] not in self.leis:
                 # only process LEI filter if LEI list has been configured
                 res = False, f"LEI: {creder.attrib["LEI"]} not allowed"
-            elif creder.attrib["engagementContextRole"] not in (EBA_DOCUMENT_SUBMITTER_ROLE,):
-                res = False, f"{creder.attrib["engagementContextRole"]} is not a valid submitter role"
+            elif creder.attrib["engagementContextRole"] != self.ecr_role:
+                return False, f"{creder.attrib['engagementContextRole']} is not a valid role for authorization"
+            # elif creder.attrib["engagementContextRole"] not in DEFAULT_ECR_ROLES:
+            #     res = False, f"{creder.attrib["engagementContextRole"]} is not a valid submitter role"
             elif not (chain := self.chain_filters(creder))[0]:
                 res = chain
             else:

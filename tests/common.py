@@ -2,8 +2,8 @@
 
 import json
 import pytest
-
-from .conftest import *
+from tests.conftest import *
+# from conftest import *
 
 from keri.app import signing
 from keri.core import coring, eventing, parsing, scheming, serdering
@@ -13,6 +13,7 @@ from keri.vdr.credentialing import Credentialer, proving
 
 LEI1 = "254900OPPU84GM83MG36"
 LEI2 = "875500ELOZEL05BVXV37"
+DEFAULT_ECR_ROLES = ["EBA Data Submitter"]  # Default role
 
 # @pytest.fixture
 # def setup_habs():
@@ -258,8 +259,8 @@ def get_da_cred(issuer, schema, registry):
 
     return creder   
 
-def get_ecr_auth_cred(aid, issuer, recipient, schema, registry, sedge, lei: str):
-    sad = dict(get_ecr_data(lei))
+def get_ecr_auth_cred(aid, issuer, recipient, schema, registry, sedge, lei: str, role = "EBA Data Submitter"):
+    sad = dict(get_ecr_data(lei, role))
     sad["AID"]=f'{aid}'
     
     _, ecr_auth = coring.Saider.saidify(sad=sad, label=coring.Saids.d)
@@ -316,15 +317,15 @@ def get_ecr_edge(auth_dig, auth_schema):
   
     return ecr
 
-def get_ecr_data(lei: str):
+def get_ecr_data(lei: str, role="EBA Data Submitter"):
     return dict(
         d="",
         personLegalName="Bank User",
-        engagementContextRole="EBA Data Submitter",
-        LEI=f"{lei}"
+        engagementContextRole=f"{role}",
+        LEI=f"{lei}",
     )
 
-def get_ecr_cred(issuer, recipient, schema, registry, sedge, lei: str):
+def get_ecr_cred(issuer, recipient, schema, registry, sedge, lei: str, role = "EBA Data Submitter"):
 
     sad = get_ecr_data(lei)
 
@@ -578,18 +579,32 @@ def reg_and_verf(hby, hab, registryName):
     return regery, registry, verifier, seqner
 
 def create_and_issue(hby, hab, regery, registry, verifier, schema, creder, seqner):
-
-    # kli vc create --name "$alias" --alias "$alias" --registry-name "$reg_name" --schema "${d_alias_schema}" --credential @desig-aliases-public.json
     creder = setup_cred(hab, registry, verifier, creder, seqner)
-    # verifier.processEscrows()
+    if not creder:
+        raise ValueError("setup_cred failed to return a valid credential (creder)")
+
+    # Issue the credential
     issue_cred(hab, regery, registry, creder)
+
+    # Verify the issued state
+    state = registry.tever.vcState(vci=creder.said)
+    if state is None or state.et not in (coring.Ilks.iss):
+        raise ValueError(f"Issued credential {creder.said} has invalid state: {state}")
+    # Process escrows in the verifier
     verifier.processEscrows()
 
+    # Validate schema and credential existence
     saids = regery.reger.issus.get(keys=hab.pre)
+    if not saids:
+        raise ValueError("Failed to fetch issued credentials")
     scads = regery.reger.schms.get(keys=schema)
-    assert len(scads) == 1
-
-    return Credentialer(hby, regery, None, verifier)
+    if not scads or len(scads) != 1:
+        raise ValueError(f"Schema {schema} not found or multiple schemas exist")
+    # Return the Credentialer
+    credentialer = Credentialer(hby, regery, None, verifier)
+    if not credentialer:
+        raise ValueError("Failed to create Credentialer")
+    return credentialer
 
 @staticmethod
 def outputCred(hby, rgy, said):

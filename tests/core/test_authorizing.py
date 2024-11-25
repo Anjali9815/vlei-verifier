@@ -1,4 +1,6 @@
-from ..common import *
+from tests.common import *
+
+# from common import *
 
 import falcon
 import falcon.testing
@@ -22,6 +24,7 @@ def test_ecr(seeder):
         regery, registry, verifier, seqner = reg_and_verf(
             hby, hab, registryName="qvireg"
         )
+        role = "EBA Data Admin"
         qvicred = get_qvi_cred(
             issuer=hab.pre,
             recipient=hab.pre,
@@ -58,17 +61,19 @@ def test_ecr(seeder):
             registry=registry,
             sedge=eaedge,
             lei=LEI1,
+            role = DEFAULT_ECR_ROLES
         )
+        
         hab, eacrdntler, easaid, eakmsgs, eatmsgs, eaimsgs, eamsgs = get_cred(
             hby, hab, regery, registry, verifier, Schema.ECR_AUTH_SCHEMA2, ecr_auth_cred, seqner
         )
-
         # try submitting the ECR auth cred
         issAndCred = bytearray()
         issAndCred.extend(eamsgs)
         acdc = issAndCred.decode("utf-8")
         hby.kevers[hab.pre] = hab.kever
-        auth = Authorizer(hby, vdb, eacrdntler.rgy.reger, [LEI1])
+        # auth = Authorizer(hby, vdb, eacrdntler.rgy.reger, [LEI1])
+        auth = Authorizer(hby, vdb, eacrdntler.rgy.reger, [LEI1], roles=["EBA Data Submitter", "EBA Data Admin"])
         chain_success, chain_msg = auth.chain_filters(ecr_auth_cred)
         assert chain_success
         assert chain_msg == f"QVI->LE->ECR_AUTH"
@@ -86,15 +91,26 @@ def test_ecr(seeder):
             registry=registry,
             sedge=ecredge,
             lei=LEI1,
+            role = DEFAULT_ECR_ROLES,
         )
-        hab, eccrdntler, ecsaid, eckmsgs, ectmsgs, ecimsgs, ecmsgs = get_cred(
-            hby, hab, regery, registry, verifier, Schema.ECR_SCHEMA, ecr_cred, seqner
-        )
+        try:
+            hab, eccrdntler, ecsaid, eckmsgs, ectmsgs, ecimsgs, ecmsgs = get_cred(
+                hby, hab, regery, registry, verifier, Schema.ECR_SCHEMA, ecr_cred, seqner
+            )
+            print(f"eccrdntler: {eccrdntler}")
+        except Exception as e:
+            print(f"Error in get_cred: {e}")
+            raise
+
+
 
         issAndCred = bytearray()
         issAndCred.extend(ecmsgs)
         hby.kevers[hab.pre] = hab.kever
-        auth = Authorizer(hby, vdb, eccrdntler.rgy.reger, [LEI1])
+        # auth = Authorizer(hby, vdb, eccrdntler.rgy.reger, [LEI1])
+        auth = Authorizer(hby, vdb, eccrdntler.rgy.reger, [LEI1], roles=["EBA Data Submitter", "EBA Data Admin"])
+
+
         chain_success, chain_msg = auth.chain_filters(ecr_cred)
         assert chain_success
         assert chain_msg == f"QVI->LE->ECR_AUTH->ECR"
